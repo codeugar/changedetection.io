@@ -1,10 +1,47 @@
 services:
+    # Traefik反向代理
+    traefik:
+      image: traefik:v2.10
+      container_name: traefik
+      command:
+        - "--api.insecure=true"  # 启用API（仅用于测试，生产环境应设为false）
+        - "--providers.docker=true"  # 启用Docker提供者
+        - "--providers.docker.exposedbydefault=false"  # 默认不暴露容器
+        - "--entrypoints.web.address=:80"  # 定义HTTP入口点
+        - "--entrypoints.websecure.address=:443"  # 定义HTTPS入口点
+        - "--certificatesresolvers.myresolver.acme.tlschallenge=true"  # 使用TLS挑战
+        - "--certificatesresolvers.myresolver.acme.email=codeugar@gmail.com"  # 请替换为您的邮箱
+        - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"  # 证书存储位置
+        # 添加HTTP到HTTPS的重定向
+        - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+        - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      ports:
+        - "80:80"
+        - "443:443"
+        - "8080:8080"  # Traefik仪表板（可选，生产环境可移除）
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro  # 访问Docker API
+        - ./letsencrypt:/letsencrypt  # 存储证书
+      networks:
+        - proxy-network
+      restart: unless-stopped
+
     changedetection:
       image: ghcr.io/dgtlmoon/changedetection.io
       container_name: changedetection
       hostname: changedetection
       volumes:
         - changedetection-data:/datastore
+      networks:
+        - proxy-network
+      restart: unless-stopped
+      labels:
+        - "traefik.enable=true"  # 启用Traefik
+        - "traefik.http.routers.changedetection.rule=Host(`change.moidamansion.online`)"  # 您的域名
+        - "traefik.http.routers.changedetection.entrypoints=websecure"  # 使用HTTPS入口点
+        - "traefik.http.routers.changedetection.tls.certresolver=myresolver"  # 使用证书解析器
+        - "traefik.http.services.changedetection.loadbalancer.server.port=5000"  # 内部服务端口
+
 # Configurable proxy list support, see https://github.com/dgtlmoon/changedetection.io/wiki/Proxy-configuration#proxy-list-support
 #        - ./proxies.json:/datastore/proxies.json
 
@@ -114,4 +151,8 @@ services:
 
 volumes:
   changedetection-data:
+
+networks:
+  proxy-network:
+    driver: bridge
 
