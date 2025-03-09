@@ -1,31 +1,4 @@
 services:
-    # Traefik反向代理
-    traefik:
-      image: traefik:v2.10
-      container_name: traefik
-      command:
-        - "--api.insecure=true"  # 启用API（仅用于测试，生产环境应设为false）
-        - "--providers.docker=true"  # 启用Docker提供者
-        - "--providers.docker.exposedbydefault=false"  # 默认不暴露容器
-        - "--entrypoints.web.address=:8081"  # 修改HTTP入口点到其他端口
-        - "--entrypoints.websecure.address=:8443"  # 修改HTTPS入口点到其他端口
-        - "--certificatesresolvers.myresolver.acme.tlschallenge=true"  # 使用TLS挑战
-        - "--certificatesresolvers.myresolver.acme.email=your-email@example.com"  # 请替换为您的邮箱
-        - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"  # 证书存储位置
-        # 添加HTTP到HTTPS的重定向
-        - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-        - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      ports:
-        - "8081:8081"  # 修改为未被占用的端口
-        - "8443:8443"  # 修改为未被占用的端口
-        - "8080:8088"  # Traefik仪表板
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock:ro  # 访问Docker API
-        - ./letsencrypt:/letsencrypt  # 存储证书
-      networks:
-        - proxy-network
-      restart: unless-stopped
-
     changedetection:
       image: ghcr.io/dgtlmoon/changedetection.io
       container_name: changedetection
